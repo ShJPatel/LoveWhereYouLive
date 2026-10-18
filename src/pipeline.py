@@ -1,3 +1,4 @@
+import os
 import yaml
 import numpy as np
 import pandas as pd
@@ -7,6 +8,7 @@ import folium
 from scipy.spatial import cKDTree
 from homeharvest import scrape_property
 from src.criteria import ACTIVE_CRITERIA
+from src.criteria.vision_grader import score_photos_with_local_clip
 
 def get_osm_tree(place, tags):
     gdf = ox.features_from_place(place, tags=tags).to_crs(epsg=32614)
@@ -14,7 +16,7 @@ def get_osm_tree(place, tags):
     names = gdf['name'].fillna('Unnamed').tolist() if 'name' in gdf.columns else ['Unnamed']*len(xy)
     return cKDTree(xy), names
 
-def run_pipeline(config_path="config.yaml"):
+def run_pipeline(config_path="config.yaml", run_local_clip=True, clip_max_candidates=25):
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
 
@@ -49,9 +51,34 @@ def run_pipeline(config_path="config.yaml"):
         for fn in ACTIVE_CRITERIA:
             m.update(fn(row, ctx))
         m['composite_score'] = round(sum(m[k] * weight for k, weight in w.items()), 1)
-    scored = pd.concat([df.reset_index(drop=True), pd.DataFrame(results)], axis=1) if results else df
-    scored.to_csv("outputs/san_antonio_ranked_rentals_v3.csv", index=False)
-    print("Pipeline executed successfully!")
+        results.append(m)
+
+    scored = pd.concat([df.reset_index(drop=True), pd.DataFrame(results)], axis=1)
+    c_cfg = config['cutoffs']
+    filtered = scored[
+        (scored['passes_appliance_gate'] == True) &
+        (scored['swri_rush_hour_mins'] <= c_cfg['max_swri_commute_mins']) &
+        (scored['grocery_dist_m'] <= c_cfg['max_grocery_dist_m']) &
+        (scored['park_dist_m'] <= c_cfg['max_park_trail_dist_m'])
+    ].sort_values(by='composite_score', ascending=False).reset_index(drop=True)
+
+    if run_local_clip and len(filtered) > 0:
+        print(f"Running Strategy 1: Local CLIP Vision Grader on top {min(clip_max_candidates, len(filtered))} candidates...")
+        filtered = score_photos_with_local_clip(filtered, max_candidates=clip_max_candidates)
+        # Blend NLP modern_interior_score (40%) + CLIP vision_modern_score (60%) for the top candidates
+        has_vision = filtered['vision_modern_score'].notna()
+        filtered.loc[has_vision, 'modern_interior_score'] = (
+            0.40 * filtered.loc[has_vision, 'modern_interior_score'] +
+            0.60 * filtered.loc[has_vision, 'vision_modern_score']
+        ).round(1)
+        # Recompute composite score and re-sort
+        filtered['composite_score'] = sum(filtered[k] * weight for k, weight in w.items()).round(1)
+        filtered = filtered.sort_values(by='composite_score', ascending=False).reset_index(drop=True)
+
+    os.makedirs("outputs", exist_ok=True)
+    filtered.to_csv("outputs/san_antonio_ranked_rentals_v3.csv", index=False)
+    print(f"Saved {len(filtered)} top candidates to outputs/san_antonio_ranked_rentals_v3.csv")
+    return filtered
 
 if __name__ == "__main__":
     run_pipeline()
