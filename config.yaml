@@ -1,0 +1,40 @@
+# San Antonio Apartment & Townhome Hunter Configuration
+workplace:
+  name: "Southwest Research Institute (SwRI)"
+  address: "6220 Culebra Rd, San Antonio, TX 78238"
+  coords: [29.4485, -98.6105]
+
+costco_locations:
+  - name: "Costco NW (5611 UTSA Blvd)"
+    coords: [29.5762, -98.6001]
+  - name: "Costco West (191 W Loop 1604 S)"
+    coords: [29.4316, -98.7115]
+  - name: "Costco North Central (1201 N Loop 1604 E)"
+    coords: [29.6095, -98.4716]
+  - name: "Costco NE Selma (15330 IH-35 N)"
+    coords: [29.5794, -98.3188]
+
+filters:
+  location: "San Antonio, TX"
+  min_rent: 1200
+  max_rent: 2200
+  min_beds: 2
+  min_baths: 1.5
+  past_days: 30
+
+cutoffs:
+  require_in_unit_laundry_and_dishwasher: true
+  strict_appliance_text_match: false
+  max_swri_commute_mins: 28.0
+  max_grocery_dist_m: 2400.0
+  max_park_trail_dist_m: 1600.0
+  min_highway_buffer_m: 200.0
+
+weights:
+  commute_score: 0.22
+  grocery_score: 0.16
+  park_trail_score: 0.16
+  pollution_highway_score: 0.12
+  modern_interior_score: 0.16
+  garage_bike_score: 0.10
+  costco_score: 0.08

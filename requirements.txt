@@ -1,0 +1,10 @@
+homeharvest>=0.4.0
+osmnx>=1.9.0
+geopandas>=0.14.0
+folium>=0.16.0
+shapely>=2.0.0
+scipy>=1.11.0
+requests>=2.31.0
+google-genai>=0.3.0
+pandas>=2.1.0
+pyyaml>=6.0.1
