@@ -1,4 +1,5 @@
 import math
+import re
 import numpy as np
 import pandas as pd
 
@@ -79,13 +80,30 @@ def criterion_costco_proximity(row, ctx):
 
 def criterion_grocery_proximity(row, ctx):
     tree, names = ctx['trees']['grocery']
-    dist_euclidean, idx = tree.query([row['utm_x'], row['utm_y']])
-    network_dist_m = dist_euclidean * CIRCUITY_FACTOR
+    distances, indices = tree.query([row['utm_x'], row['utm_y']], k=min(5, len(names)))
+    
+    if not isinstance(indices, np.ndarray):
+        indices = [indices]
+        distances = [distances]
+        
+    best_idx = indices[0]
+    best_dist = distances[0]
+    best_name = names[best_idx]
+    
+    for idx, dist in zip(indices, distances):
+        name = names[idx].lower()
+        if 'walmart' not in name:
+            best_idx = idx
+            best_dist = dist
+            best_name = names[idx]
+            break
+            
+    network_dist_m = best_dist * CIRCUITY_FACTOR
     walk_mins = network_dist_m / WALK_SPEED_M_MIN
     bike_mins = network_dist_m / BIKE_SPEED_M_MIN
     score = np.clip(100 - ((network_dist_m - 400) / (2400 - 400)) * 100, 0, 100)
     return {
-        'nearest_grocery': names[idx],
+        'nearest_grocery': best_name,
         'grocery_dist_m': round(network_dist_m),
         'grocery_walk_mins': round(walk_mins, 1),
         'grocery_bike_mins': round(bike_mins, 1),
@@ -160,6 +178,91 @@ def criterion_modern_appliances_and_open_floorplan(row, ctx):
         'modern_interior_score': round(float(np.clip(score, 10.0, 100.0)), 1)
     }
 
+def criterion_water_softener_and_filtration(row, ctx):
+    desc = str(row.get('description', '') or '').lower()
+    score, tags = 40.0, []
+    softener_keywords = {
+        'water softener': 40, 'softener loop': 35, 'softened water': 35,
+        'reverse osmosis': 25, 'ro system': 25, 'filtration system': 20,
+        'water filtration': 20, 'tankless water heater': 15
+    }
+    for kw, pts in softener_keywords.items():
+        if kw in desc:
+            score += pts
+            tags.append(kw)
+    return {
+        'water_softener_tags': ', '.join(tags) if tags else 'Standard Hard Water (No Softener Listed)',
+        'water_softener_score': round(float(np.clip(score, 10.0, 100.0)), 1)
+    }
+
+def criterion_pet_friendly_and_hard_flooring(row, ctx):
+    desc = str(row.get('description', '') or '').lower()
+    score, tags = 60.0, []
+    hard_flooring_terms = ['vinyl plank', 'lvp', 'wood floor', 'hardwood', 'tile flooring', 'stained concrete', 'no carpet']
+    carpet_flags = ['wall-to-wall carpet', 'carpet in bedrooms', 'new carpet']
+    cat_terms = ['cats allowed', 'cat friendly', 'pets allowed', 'pet friendly', 'no pet rent']
+    
+    if any(term in desc for term in hard_flooring_terms):
+        score += 25.0
+        tags.append('Hard Flooring / LVP')
+    elif any(flag in desc for flag in carpet_flags):
+        score -= 20.0
+        tags.append('Carpeted Bedrooms')
+    if any(term in desc for term in cat_terms):
+        score += 15.0
+        tags.append('Pet/Cat Friendly')
+        
+    return {
+        'pet_flooring_tags': ', '.join(tags) if tags else 'Standard Flooring',
+        'pet_flooring_score': round(float(np.clip(score, 10.0, 100.0)), 1)
+    }
+
+def criterion_advanced_junk_fee_parser(row, ctx):
+    desc = str(row.get('description', '') or '').lower()
+    fee_patterns = r'\$(\d+)\s*(?:/mo)?\s*(?:valet|trash|waste|package|internet|tech|pest|amenity|fee)'
+    matches = re.findall(fee_patterns, desc)
+    extracted_fees = sum([int(m) for m in matches])
+    utilities_included = any(k in desc for k in ['water included', 'trash included', 'internet included', 'free wifi', 'all bills paid'])
+    
+    score = 100.0 - min(extracted_fees, 50.0)
+    if utilities_included:
+        score += 10.0
+    return {
+        'extracted_monthly_fees': extracted_fees,
+        'utilities_included': utilities_included,
+        'effective_rent_score': round(float(np.clip(score, 30.0, 100.0)), 1)
+    }
+
+def criterion_spatial_noise_buffer(row, ctx):
+    lat, lon = row['latitude'], row['longitude']
+    utm_x, utm_y = row['utm_x'], row['utm_y']
+    
+    rail_dist_m = 9999.0
+    if 'railway' in ctx['trees']:
+        rail_tree, _ = ctx['trees']['railway']
+        rail_dist_m, _ = rail_tree.query([utm_x, utm_y])
+        
+    sat_coords = (29.5338, -98.4698)
+    sat_dist_km = haversine_km(lat, lon, sat_coords[0], sat_coords[1])
+    
+    score, notes = 90.0, []
+    if rail_dist_m < 200:
+        score -= 40.0
+        notes.append(f'Close to Railway ({round(rail_dist_m)}m)')
+    elif rail_dist_m < 500:
+        score -= 15.0
+        notes.append(f'Moderate Rail Proximity ({round(rail_dist_m)}m)')
+    if sat_dist_km < 6.0:
+        score -= 25.0
+        notes.append(f'SAT Airport Approach ({round(sat_dist_km, 1)}km)')
+        
+    return {
+        'railway_dist_m': round(rail_dist_m) if rail_dist_m < 9000 else 9999,
+        'sat_airport_dist_km': round(sat_dist_km, 1),
+        'noise_buffer_notes': ', '.join(notes) if notes else 'Low Noise Corridor',
+        'noise_buffer_score': round(float(np.clip(score, 20.0, 100.0)), 1)
+    }
+
 ACTIVE_CRITERIA = [
     criterion_required_appliances_gatekeeper,
     criterion_garage_and_bike_storage,
@@ -168,5 +271,9 @@ ACTIVE_CRITERIA = [
     criterion_park_trail_proximity,
     criterion_swri_rush_hour_commute,
     criterion_pollution_and_highway_buffer,
-    criterion_modern_appliances_and_open_floorplan
+    criterion_modern_appliances_and_open_floorplan,
+    criterion_water_softener_and_filtration,
+    criterion_pet_friendly_and_hard_flooring,
+    criterion_advanced_junk_fee_parser,
+    criterion_spatial_noise_buffer
 ]

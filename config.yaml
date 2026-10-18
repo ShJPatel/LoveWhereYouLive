@@ -1,4 +1,3 @@
-# San Antonio Apartment & Townhome Hunter Configuration
 workplace:
   name: "Southwest Research Institute (SwRI)"
   address: "6220 Culebra Rd, San Antonio, TX 78238"
@@ -31,10 +30,14 @@ cutoffs:
   min_highway_buffer_m: 200.0
 
 weights:
-  commute_score: 0.22
-  grocery_score: 0.16
-  park_trail_score: 0.16
-  pollution_highway_score: 0.12
-  modern_interior_score: 0.16
-  garage_bike_score: 0.10
+  commute_score: 0.18
+  grocery_score: 0.12
+  park_trail_score: 0.12
+  pollution_highway_score: 0.08
+  modern_interior_score: 0.12
+  garage_bike_score: 0.08
   costco_score: 0.08
+  water_softener_score: 0.06
+  pet_flooring_score: 0.06
+  effective_rent_score: 0.05
+  noise_buffer_score: 0.05
