@@ -1,0 +1,33 @@
+{
+  "version": "4.0",
+  "last_updated": "2026-10-19",
+  "taste_profile": {
+    "liked_kitchen_photo_urls": [],
+    "disliked_kitchen_photo_urls": [],
+    "liked_property_addresses": [],
+    "rejected_property_addresses": [],
+    "rejection_reasons_log": [
+      {
+        "date": "2026-10-19",
+        "reason": "First result had an old kitchen that was falsely scored 100/100 due to max() pooling and missing Step 4 cell.",
+        "rule_learned": "Strict kitchen isolation + 5-axis weakest-link penalty + direct cosine similarity against disliked kitchen embeddings."
+      }
+    ],
+    "excluded_grocery_chains": [
+      "walmart",
+      "dollar general",
+      "family dollar",
+      "target"
+    ],
+    "must_have_keywords": [],
+    "dealbreaker_keywords": [
+      "shared laundry",
+      "coin-operated",
+      "no washer",
+      "furnished Finder",
+      "student housing",
+      "room for rent"
+    ]
+  },
+  "learned_weights_override": {}
+}
