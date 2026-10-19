@@ -30,14 +30,15 @@ cutoffs:
   min_highway_buffer_m: 200.0
 
 weights:
-  commute_score: 0.18
-  grocery_score: 0.12
-  park_trail_score: 0.12
-  pollution_highway_score: 0.08
-  modern_interior_score: 0.12
-  garage_bike_score: 0.08
-  costco_score: 0.08
-  water_softener_score: 0.06
-  pet_flooring_score: 0.06
+  commute_score: 0.16
+  grocery_score: 0.11
+  park_trail_score: 0.11
+  pollution_highway_score: 0.07
+  modern_interior_score: 0.10
+  garage_bike_score: 0.07
+  costco_score: 0.07
+  water_softener_score: 0.05
+  pet_flooring_score: 0.05
   effective_rent_score: 0.05
   noise_buffer_score: 0.05
+  recency_score: 0.06

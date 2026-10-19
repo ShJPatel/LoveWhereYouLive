@@ -263,7 +263,28 @@ def criterion_spatial_noise_buffer(row, ctx):
         'noise_buffer_score': round(float(np.clip(score, 20.0, 100.0)), 1)
     }
 
+
+def criterion_year_built_recency(row, ctx):
+    """CRITERION: Favors newer construction properties (year_built) to ensure modern structural standards."""
+    year_built = row.get('year_built', np.nan)
+    if pd.isna(year_built):
+        return {'property_age_years': 'Unknown', 'recency_score': 50.0}
+    current_year = 2026
+    age_years = max(0, current_year - int(year_built))
+    if age_years <= 3:
+        score = 100.0
+    elif age_years <= 7:
+        score = 85.0
+    elif age_years <= 12:
+        score = 70.0
+    elif age_years <= 20:
+        score = 50.0
+    else:
+        score = np.clip(100.0 - (age_years * 2.5), 15.0, 45.0)
+    return {'property_age_years': age_years, 'recency_score': round(float(score), 1)}
+
 ACTIVE_CRITERIA = [
+    criterion_year_built_recency,
     criterion_required_appliances_gatekeeper,
     criterion_garage_and_bike_storage,
     criterion_costco_proximity,
