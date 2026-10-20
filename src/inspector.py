@@ -6,21 +6,32 @@ import geopandas as gpd
 from homeharvest import scrape_property
 
 def address_from_url_or_query(url_or_address):
-    """Extracts a searchable street address/zip from a Realtor.com, Zillow, or Redfin URL, or returns the raw address string."""
+    """Extracts a searchable street address/zip from Realtor.com (rentals/details or realestateandhomes-detail), Zillow, or Redfin URLs."""
     s = str(url_or_address).strip()
     if not s.startswith("http"):
         return s
-    # Realtor.com URL pattern: .../realestateandhomes-detail/123-Main-St_San-Antonio_TX_78238_M12345...
+    
+    # Realtor.com rentals/details/ pattern
+    m_rentals = re.search(r"rentals/details/([^/?#]+)", s)
+    if m_rentals:
+        slug = m_rentals.group(1)
+        slug = re.sub(r"-[A-Z][0-9_-]+$", "", slug) # removes trailing MLS/ID hashes like -M70795-64780
+        parts = slug.split("_")
+        return " ".join(p.replace("-", " ") for p in parts)
+
+    # Realtor.com realestateandhomes-detail/ pattern
     m_realtor = re.search(r"realestateandhomes-detail/([^/?#]+)", s)
     if m_realtor:
         slug = m_realtor.group(1)
         slug = re.sub(r"_M[0-9_-]+$", "", slug)
         parts = slug.split("_")
         return " ".join(p.replace("-", " ") for p in parts)
-    # Zillow URL pattern: .../homedetails/123-Main-St-San-Antonio-TX-78238/12345_zpid/
+        
+    # Zillow URL pattern
     m_zillow = re.search(r"homedetails/([^/?#]+)", s)
     if m_zillow:
         return m_zillow.group(1).replace("-", " ")
+        
     return s
 
 def inspect_and_explain_listing(
@@ -37,16 +48,6 @@ def inspect_and_explain_listing(
     pref_file="data/preferences.json",
     record_feedback_fn=None
 ):
-    """
-    Single-Link / Address Sanity Check & Diagnostic Waterfall Inspector:
-    1. Finds the property in `raw_df` (by URL or fuzzy address match) or scrapes it on-the-fly via HomeHarvest.
-    2. Checks every Hard Cutoff Gate (Budget, Beds/Baths, In-Unit Laundry/Dishwasher, Max Commute, Max Grocery/Park Dist)
-       and shows PASS / FAIL with the exact value vs threshold.
-    3. Runs all 12 criteria + 5-axis CLIP Kitchen Vision and outputs a full Waterfall Table:
-       [Criterion | Raw Score (0-100) | Weight | Weighted Pts | Fleet Percentile | Diagnostic Note]
-    4. Computes "How to Tweak Weights to Get More Like This": identifies which criteria this property excels at
-       relative to the San Antonio average and suggests exact `CONFIG['weights']` adjustments!
-    """
     query_str = str(url_or_address).strip()
     parsed_addr = address_from_url_or_query(query_str)
     print(f"🔍 Inspecting target listing: '{parsed_addr}'...")
@@ -56,7 +57,6 @@ def inspect_and_explain_listing(
         if query_str.startswith("http") and "property_url" in raw_df.columns:
             matches = raw_df[raw_df["property_url"].astype(str).str.contains(query_str.split("?")[0], case=False, na=False)]
         if len(matches) == 0 and "formatted_address" in raw_df.columns:
-            # Try matching street number + street name tokens
             tokens = [t for t in re.split(r"\W+", parsed_addr.lower()) if t and t not in ("san", "antonio", "tx", "apt", "unit")]
             if tokens:
                 mask = pd.Series(True, index=raw_df.index)
@@ -74,7 +74,7 @@ def inspect_and_explain_listing(
             print(f"⚠️ Live scrape error: {e}")
 
     if len(matches) == 0:
-        print("❌ Could not locate listing in cache or live scrape. Try passing the street address (e.g. '1234 Culebra Rd, San Antonio, TX').")
+        print("❌ Could not locate listing in cache or live scrape. Try passing the street address (e.g. '806 W French Pl, San Antonio, TX').")
         return None
 
     target_df = matches.head(1).copy().reset_index(drop=True)
@@ -108,7 +108,6 @@ def inspect_and_explain_listing(
     comp_score = round(sum(float(r.get(k, 50.0)) * w for k, w in weights.items()), 1)
     single_scored.loc[0, "composite_score"] = comp_score
 
-    # 1. Print Header & Hard Gatekeeper Audit
     addr = r.get("formatted_address", parsed_addr)
     price = r.get("list_price", "N/A")
     beds = r.get("beds", "N/A")
@@ -120,7 +119,7 @@ def inspect_and_explain_listing(
     print(f"🏠 LISTING SANITY CHECK: {addr}")
     print(f"💵 Price: ${price}/mo | 🛏️ {beds} Beds / {baths} Baths | 🏗️ Age: {r.get('property_age_years', 'Unknown')} yrs | 🏆 Composite Score: {comp_score}/100")
     print("-" * 88)
-    print("🚦 HARD CUTOFF GATEKEEPER AUDIT (Why was this kept or filtered out?):")
+    print("🚦 HARD CUTOFF GATEKEEPER AUDIT:")
     gates = [
         ("Rent Budget", f"${price}", f"${f_cfg['min_rent']} - ${f_cfg['max_rent']}", f_cfg["min_rent"] <= float(price or 0) <= f_cfg["max_rent"]),
         ("Min Bedrooms", f"{beds} beds", f">= {f_cfg['min_beds']} beds", float(beds or 0) >= f_cfg["min_beds"]),
@@ -133,7 +132,6 @@ def inspect_and_explain_listing(
         status = "✅ PASS" if passed else "❌ FAIL (FILTERED OUT BY THIS CUTOFF!)"
         print(f"  • {g_name:<30}: {actual:<32} (Rule: {thresh}) -> {status}")
 
-    # 2. Build Criterion-by-Criterion Waterfall Table
     note_map = {
         "commute_score": f"{r.get('swri_rush_hour_mins')} mins ({r.get('commute_corridor')})",
         "grocery_score": f"{r.get('grocery_walk_mins')}m walk / {r.get('grocery_bike_mins')}m bike to {r.get('nearest_grocery')}",
@@ -162,18 +160,17 @@ def inspect_and_explain_listing(
         })
     breakdown_df = pd.DataFrame(rows_table)
 
-    # 3. Suggest Weight Tweaks if the user LOVES this listing and wants more like it
     print("-" * 88)
     print("🎛️ HOW TO TWEAK SCORING TO GET MORE PLACES LIKE THIS:")
     strengths = [row_d["Criterion"] for row_d in rows_table if row_d["Raw Score (0-100)"] >= 80.0]
     bottlenecks = [row_d["Criterion"] for row_d in rows_table if row_d["Raw Score (0-100)"] < 55.0]
     failed_gates = [g[0] for g in gates if not g[3]]
     if failed_gates:
-        print(f"  ⚠️ First: This listing was blocked by hard cutoffs: {failed_gates}. Relax those in `CONFIG['cutoffs']` if you want it included!")
+        print(f"  ⚠️ Blocked by hard cutoffs: {failed_gates}.")
     if strengths:
-        print(f"  📈 Signature Strengths (>=80/100): {strengths} -> Boost these weights in `CONFIG['weights']` to surface similar properties.")
+        print(f"  📈 Signature Strengths (>=80/100): {strengths} -> Boost these weights.")
     if bottlenecks:
-        print(f"  📉 Dragging Score Down (<55/100): {bottlenecks} -> Lower these weights if you don't care about them for this style of home.")
+        print(f"  📉 Dragging Score Down (<55/100): {bottlenecks} -> Lower these weights.")
     print("=" * 88)
 
     if record_feedback_fn is not None and (add_to_favorites or add_to_blacklist):
