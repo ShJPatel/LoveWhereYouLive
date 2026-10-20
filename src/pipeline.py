@@ -1,4 +1,5 @@
 import os
+import pickle
 import yaml
 import numpy as np
 import pandas as pd
@@ -16,18 +17,30 @@ def get_osm_tree(place, tags):
     names = gdf['name'].fillna('Unnamed').tolist() if 'name' in gdf.columns else ['Unnamed']*len(xy)
     return cKDTree(xy), names
 
-def run_pipeline(config_path="config.yaml", run_local_clip=True, clip_max_candidates=25):
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
-
-    loc = config['filters']['location']
-    print(f"Building spatial KD-Trees for {loc}...")
+def load_or_build_trees(loc, cache_dir="cache", force_refresh=False):
+    os.makedirs(cache_dir, exist_ok=True)
+    cache_file = os.path.join(cache_dir, f"osm_trees_{loc.replace(', ', '_').replace(' ', '_').lower()}.pkl")
+    if os.path.exists(cache_file) and not force_refresh:
+        print(f"⚡ Loading cached spatial KD-Trees from {cache_file}...")
+        with open(cache_file, "rb") as f:
+            return pickle.load(f)
+    print(f"Building spatial KD-Trees for {loc} (will cache for future runs)...")
     trees = {
         'grocery': get_osm_tree(loc, {'shop': ['supermarket', 'grocery', 'greengrocer']}),
         'park': get_osm_tree(loc, {'leisure': ['park', 'nature_reserve'], 'highway': ['cycleway', 'path', 'footway']}),
         'highway': get_osm_tree(loc, {'highway': ['motorway', 'trunk']}),
         'railway': get_osm_tree(loc, {'railway': 'rail'})
     }
+    with open(cache_file, "wb") as f:
+        pickle.dump(trees, f)
+    return trees
+
+def run_pipeline(config_path="config.yaml", run_local_clip=True, clip_max_candidates=25, force_refresh_trees=False):
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+
+    loc = config['filters']['location']
+    trees = load_or_build_trees(loc, force_refresh=force_refresh_trees)
 
     print("Scraping rental listings via HomeHarvest...")
     raw = scrape_property(location=loc, listing_type='for_rent', past_days=config['filters']['past_days'])
@@ -65,13 +78,11 @@ def run_pipeline(config_path="config.yaml", run_local_clip=True, clip_max_candid
     if run_local_clip and len(filtered) > 0:
         print(f"Running Strategy 1: Local CLIP Vision Grader on top {min(clip_max_candidates, len(filtered))} candidates...")
         filtered = score_photos_with_local_clip(filtered, max_candidates=clip_max_candidates)
-        # Blend NLP modern_interior_score (40%) + CLIP vision_modern_score (60%) for the top candidates
         has_vision = filtered['vision_modern_score'].notna()
         filtered.loc[has_vision, 'modern_interior_score'] = (
             0.40 * filtered.loc[has_vision, 'modern_interior_score'] +
             0.60 * filtered.loc[has_vision, 'vision_modern_score']
         ).round(1)
-        # Recompute composite score and re-sort
         filtered['composite_score'] = sum(filtered[k] * weight for k, weight in w.items()).round(1)
         filtered = filtered.sort_values(by='composite_score', ascending=False).reset_index(drop=True)
 
