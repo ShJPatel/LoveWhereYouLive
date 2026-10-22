@@ -7,6 +7,7 @@ def load_preferences(path="data/preferences.json"):
     default_prefs = {
         "taste_profile": {
             "liked_property_addresses": [],
+            "rejected_property_addresses": [],
             "blacklisted_complex_keywords": [],
             "liked_kitchen_photo_urls": [],
             "disliked_kitchen_photo_urls": [],
@@ -86,10 +87,18 @@ def record_feedback(
     
     if address:
         addr_clean = str(address).strip()
-        if liked and addr_clean not in prefs["taste_profile"]["liked_property_addresses"]:
-            prefs["taste_profile"]["liked_property_addresses"].append(addr_clean)
-        elif not liked and addr_clean in prefs["taste_profile"]["liked_property_addresses"]:
-            prefs["taste_profile"]["liked_property_addresses"].remove(addr_clean)
+        if liked:
+            if addr_clean not in prefs["taste_profile"]["liked_property_addresses"]:
+                prefs["taste_profile"]["liked_property_addresses"].append(addr_clean)
+            if "rejected_property_addresses" in prefs["taste_profile"] and addr_clean in prefs["taste_profile"]["rejected_property_addresses"]:
+                prefs["taste_profile"]["rejected_property_addresses"].remove(addr_clean)
+        else:
+            if addr_clean in prefs["taste_profile"]["liked_property_addresses"]:
+                prefs["taste_profile"]["liked_property_addresses"].remove(addr_clean)
+            if "rejected_property_addresses" not in prefs["taste_profile"]:
+                prefs["taste_profile"]["rejected_property_addresses"] = []
+            if addr_clean not in prefs["taste_profile"]["rejected_property_addresses"]:
+                prefs["taste_profile"]["rejected_property_addresses"].append(addr_clean)
             
     if blacklist_complex_name:
         kw = str(blacklist_complex_name).strip().lower()

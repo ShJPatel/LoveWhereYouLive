@@ -448,7 +448,9 @@ def run_pipeline(
 
     df = raw.dropna(subset=['latitude', 'longitude', 'list_price']).copy()
     in_budget = (df['list_price'] >= f_cfg['min_rent']) & (df['list_price'] <= f_cfg['max_rent'])
-    in_beds = df['beds'].fillna(0) >= f_cfg['min_beds']
+    min_beds_val = f_cfg.get('min_beds', 2)
+    max_beds_val = f_cfg.get('max_beds', 99)
+    in_beds = (df['beds'].fillna(0) >= min_beds_val) & (df['beds'].fillna(0) <= max_beds_val)
     df_pinned = df['formatted_address'].astype(str).str.strip().isin(liked_addrs | tracked_addrs)
     df = df[(in_budget & in_beds) | df_pinned].copy()
     
@@ -464,6 +466,38 @@ def run_pipeline(
                 
     gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs="EPSG:4326").to_crs(epsg=32614)
     df["utm_x"], df["utm_y"] = gdf.geometry.x, gdf.geometry.y
+
+    # Multi-Source Spatial Proximity Deduplication (Zillow vs MLS cross-matching within 25m)
+    if len(df) > 1:
+        n_before = len(df)
+        pts = np.column_stack([df["utm_x"].values, df["utm_y"].values])
+        dedup_tree = cKDTree(pts)
+        pairs = dedup_tree.query_pairs(r=25.0)  # within 25 meters
+        drop_indices = set()
+        for i, j in pairs:
+            if i in drop_indices or j in drop_indices:
+                continue
+            row_i, row_j = df.iloc[i], df.iloc[j]
+            # If same beds and price within $60, treat as duplicate listing across sources
+            p_i = float(row_i.get("list_price", 0))
+            p_j = float(row_j.get("list_price", 0))
+            b_i = float(row_i.get("beds", 0))
+            b_j = float(row_j.get("beds", 0))
+            if b_i == b_j and abs(p_i - p_j) <= 60.0:
+                # Prefer listing with photos or longer description, keep pinned
+                pinned_i = row_i.get("formatted_address", "") in (liked_addrs | tracked_addrs)
+                pinned_j = row_j.get("formatted_address", "") in (liked_addrs | tracked_addrs)
+                if pinned_i and not pinned_j:
+                    drop_indices.add(df.index[j])
+                elif pinned_j and not pinned_i:
+                    drop_indices.add(df.index[i])
+                else:
+                    len_i = len(str(row_i.get("photos", "") or "")) + len(str(row_i.get("description", "") or ""))
+                    len_j = len(str(row_j.get("photos", "") or "")) + len(str(row_j.get("description", "") or ""))
+                    drop_indices.add(df.index[j] if len_i >= len_j else df.index[i])
+        if drop_indices:
+            df = df.drop(index=list(drop_indices)).copy()
+            print(f"🧹 Spatial Deduplication: Removed {len(drop_indices)} duplicate listings across Zillow/MLS within 25m ({n_before} -> {len(df)})")
 
     # Apply fast vectorized spatial sieve & hard-cutoff pruning before row-by-row criteria scoring
     df = _apply_vectorized_spatial_sieve(
@@ -492,6 +526,15 @@ def run_pipeline(
         
     scored = pd.concat([df.reset_index(drop=True), pd.DataFrame(results)], axis=1)
     
+    # Enforce In-Unit Laundry & Dishwasher gatekeeper if configured
+    c_cutoffs = config_dict.get('cutoffs', {})
+    if c_cutoffs.get('require_in_unit_laundry_and_dishwasher', True) and 'passes_appliance_gate' in scored.columns:
+        appliance_pass = scored['passes_appliance_gate'].fillna(True) | scored['formatted_address'].astype(str).str.strip().isin(liked_addrs | tracked_addrs)
+        n_before_app = len(scored)
+        scored = scored[appliance_pass].copy().reset_index(drop=True)
+        if len(scored) < n_before_app:
+            print(f"🧺 Appliance Gatekeeper: Filtered out {n_before_app - len(scored)} units lacking verified in-unit laundry / dishwashers.")
+
     history_file = os.path.join(cache_dir, "seen_listings_history.json")
     history = {}
     if os.path.exists(history_file):
@@ -548,7 +591,38 @@ def run_pipeline(
                 scored.loc[idx, "composite_score"] = round(sum(float(r_row.get(k, 50.0)) * w for k, w in weights.items()), 1)
             scored = scored.sort_values(by="composite_score", ascending=False).reset_index(drop=True)
         
+    # Preserve existing user decisions & notes if previously recorded in the CSV
     out_csv = "outputs/san_antonio_ranked_rentals_v4.csv"
+    if os.path.exists(out_csv):
+        try:
+            old_df = pd.read_csv(out_csv)
+            if "formatted_address" in old_df.columns:
+                user_cols = [c for c in ["user_decision", "user_notes"] if c in old_df.columns]
+                if user_cols:
+                    old_notes = old_df.dropna(subset=["formatted_address"])[["formatted_address"] + user_cols].drop_duplicates("formatted_address")
+                    old_notes["_merge_key"] = old_notes["formatted_address"].astype(str).str.strip().str.lower()
+                    scored["_merge_key"] = scored["formatted_address"].astype(str).str.strip().str.lower()
+                    scored = scored.merge(old_notes[["_merge_key"] + user_cols], on="_merge_key", how="left").drop(columns=["_merge_key"])
+        except Exception as e:
+            print(f"⚠️ Note preserving previous notes: {e}")
+
+    if "user_decision" not in scored.columns:
+        scored["user_decision"] = ""
+    if "user_notes" not in scored.columns:
+        scored["user_notes"] = ""
+
+    # Reorder key columns to the front of the CSV for convenient spreadsheet review
+    lead_cols = [
+        "composite_score", "user_decision", "user_notes", "listing_status",
+        "formatted_address", "list_price", "beds", "full_baths",
+        "swri_rush_hour_mins", "modern_interior_score", "vision_notes",
+        "nearest_grocery", "grocery_walk_mins", "nearest_park_trail",
+        "appliances_status", "property_url"
+    ]
+    present_lead = [c for c in lead_cols if c in scored.columns]
+    other_cols = [c for c in scored.columns if c not in present_lead]
+    scored = scored[present_lead + other_cols].copy()
+
     scored.to_csv(out_csv, index=False)
     print(f"✅ Successfully exported {len(scored)} ranked listings to {out_csv}!")
     

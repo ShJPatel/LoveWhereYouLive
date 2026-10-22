@@ -1,0 +1,626 @@
+{
+  "workplace": {
+    "name": "Southwest Research Institute (SwRI)",
+    "address": "6220 Culebra Rd, San Antonio, TX 78238",
+    "coords": [
+      29.4485,
+      -98.6105
+    ]
+  },
+  "upscale_grocers": [
+    {
+      "id": "tj_quarry",
+      "name": "Trader Joe's (Alamo Quarry)",
+      "address": "350 E Basse Rd, San Antonio, TX 78209",
+      "coords": [
+        29.4967,
+        -98.478
+      ]
+    },
+    {
+      "id": "tj_huebner",
+      "name": "Trader Joe's (Huebner Oaks)",
+      "address": "11745 I-10 W #410, San Antonio, TX 78230",
+      "coords": [
+        29.5506,
+        -98.5839
+      ]
+    },
+    {
+      "id": "tj_sonterra",
+      "name": "Trader Joe's (Sonterra / Stone Oak)",
+      "address": "403 N Loop 1604 W, San Antonio, TX 78232",
+      "coords": [
+        29.6093,
+        -98.499
+      ]
+    },
+    {
+      "id": "wf_quarry",
+      "name": "Whole Foods Market (Alamo Quarry)",
+      "address": "255 E Basse Rd Ste 130, San Antonio, TX 78209",
+      "coords": [
+        29.4932,
+        -98.4805
+      ]
+    },
+    {
+      "id": "wf_vineyard",
+      "name": "Whole Foods Market (The Vineyard)",
+      "address": "18403 Blanco Rd, San Antonio, TX 78258",
+      "coords": [
+        29.6132,
+        -98.5111
+      ]
+    },
+    {
+      "id": "cm_broadway",
+      "name": "Central Market (Broadway)",
+      "address": "4821 Broadway, San Antonio, TX 78209",
+      "coords": [
+        29.4706,
+        -98.4647
+      ]
+    },
+    {
+      "id": "pullman_pearl",
+      "name": "Pullman Market (The Pearl)",
+      "address": "221 Pearl Pkwy, San Antonio, TX 78215",
+      "coords": [
+        29.4415,
+        -98.4806
+      ]
+    },
+    {
+      "id": "sprouts_callaghan",
+      "name": "Sprouts Farmers Market (Callaghan)",
+      "address": "8101 Callaghan Rd, San Antonio, TX 78230",
+      "coords": [
+        29.5139,
+        -98.5516
+      ]
+    },
+    {
+      "id": "sprouts_bandera",
+      "name": "Sprouts Farmers Market (Bandera)",
+      "address": "6812 Bandera Rd, San Antonio, TX 78238",
+      "coords": [
+        29.4451,
+        -98.673
+      ]
+    },
+    {
+      "id": "sprouts_bulverde",
+      "name": "Sprouts Farmers Market (Bulverde)",
+      "address": "22135 Bulverde Rd, San Antonio, TX 78259",
+      "coords": [
+        29.6467,
+        -98.4277
+      ]
+    },
+    {
+      "id": "natg_san_pedro",
+      "name": "Natural Grocers (San Pedro)",
+      "address": "13310 San Pedro Ave, San Antonio, TX 78216",
+      "coords": [
+        29.4913,
+        -98.4587
+      ]
+    },
+    {
+      "id": "natg_nw_military",
+      "name": "Natural Grocers (NW Military)",
+      "address": "6915 West Ave, San Antonio, TX 78213",
+      "coords": [
+        29.5643,
+        -98.5374
+      ]
+    }
+  ],
+  "candidate_listings": [
+    {
+      "id": "7901987200.0",
+      "formatted_address": "6160 Eckhert Rd Apt 606, San Antonio, TX, 78240",
+      "latitude": 29.518036,
+      "longitude": -98.608522
+    },
+    {
+      "id": "nan",
+      "formatted_address": "310 Seascape Dr, San Antonio, TX",
+      "latitude": 29.43395,
+      "longitude": -98.698006
+    },
+    {
+      "id": "nan",
+      "formatted_address": "7716 Louis Pasteur Dr, San Antonio, TX, 78229",
+      "latitude": 29.507802,
+      "longitude": -98.568283
+    },
+    {
+      "id": "9202420303.0",
+      "formatted_address": "8933 Emerald Spg Unit Main, San Antonio, TX, 78250",
+      "latitude": 29.492271,
+      "longitude": -98.667053
+    },
+    {
+      "id": "9811507611.0",
+      "formatted_address": "5253 Meadow Rise St, San Antonio, TX, 78250",
+      "latitude": 29.481241,
+      "longitude": -98.654091
+    },
+    {
+      "id": "9877131342.0",
+      "formatted_address": "1210 Gardina St, San Antonio, TX, 78201",
+      "latitude": 29.479845,
+      "longitude": -98.533981
+    },
+    {
+      "id": "7016214939.0",
+      "formatted_address": "8913 Fall River Dr, San Antonio, TX, 78250",
+      "latitude": 29.491329,
+      "longitude": -98.666122
+    },
+    {
+      "id": "8272866452.0",
+      "formatted_address": "2022 W Kings Hwy, San Antonio, TX, 78201",
+      "latitude": 29.460643,
+      "longitude": -98.530748
+    },
+    {
+      "id": "7125744375.0",
+      "formatted_address": "4212 Medical Dr Unit 1106, San Antonio, TX, 78229",
+      "latitude": 29.514191,
+      "longitude": -98.565891
+    },
+    {
+      "id": "8732644723.0",
+      "formatted_address": "1920 Leal St, San Antonio, TX, 78207",
+      "latitude": 29.435671,
+      "longitude": -98.533189
+    },
+    {
+      "id": "8376147345.0",
+      "formatted_address": "8533 Echo Creek Ln, San Antonio, TX, 78240",
+      "latitude": 29.519937,
+      "longitude": -98.612011
+    },
+    {
+      "id": "nan",
+      "formatted_address": "1626 N Ellison Dr, San Antonio, TX",
+      "latitude": 29.450283,
+      "longitude": -98.68934
+    },
+    {
+      "id": "8663644827.0",
+      "formatted_address": "5604 Rose Dawn, San Antonio, TX, 78250",
+      "latitude": 29.492979,
+      "longitude": -98.665839
+    },
+    {
+      "id": "7001850768.0",
+      "formatted_address": "7203 Timbercreek Dr, San Antonio, TX, 78227",
+      "latitude": 29.426648,
+      "longitude": -98.635323
+    },
+    {
+      "id": "7525787235.0",
+      "formatted_address": "1614 W Kings Hwy Unit A, San Antonio, TX, 78201",
+      "latitude": 29.459766,
+      "longitude": -98.522051
+    },
+    {
+      "id": "8100715926.0",
+      "formatted_address": "4134 St Charles Bay, San Antonio, TX, 78229",
+      "latitude": 29.524863,
+      "longitude": -98.565475
+    },
+    {
+      "id": "9698446486.0",
+      "formatted_address": "10951 Laureate Dr Apt 606, San Antonio, TX, 78249",
+      "latitude": 29.546923,
+      "longitude": -98.587631
+    },
+    {
+      "id": "8804822004.0",
+      "formatted_address": "10951 Laureate Dr Apt 1418, San Antonio, TX, 78249",
+      "latitude": 29.54696,
+      "longitude": -98.587229
+    },
+    {
+      "id": "9183256383.0",
+      "formatted_address": "10951 Laureate Dr Apt 2103, San Antonio, TX, 78249",
+      "latitude": 29.546923,
+      "longitude": -98.587631
+    },
+    {
+      "id": "8063207983.0",
+      "formatted_address": "5823 Shadow Gln Apt 4, San Antonio, TX, 78240",
+      "latitude": 29.51074,
+      "longitude": -98.59761
+    },
+    {
+      "id": "9878797334.0",
+      "formatted_address": "252 Cornell Ave # BLDG6, San Antonio, TX, 78201",
+      "latitude": 29.444471,
+      "longitude": -98.510831
+    },
+    {
+      "id": "7753585717.0",
+      "formatted_address": "200 Melrose Pl Unit 500, San Antonio, TX, 78212",
+      "latitude": 29.469131,
+      "longitude": -98.494109
+    },
+    {
+      "id": "8456671462.0",
+      "formatted_address": "1743 W Summit Ave Unit 2, San Antonio, TX, 78201",
+      "latitude": 29.459578,
+      "longitude": -98.524686
+    },
+    {
+      "id": "8221964843.0",
+      "formatted_address": "1244 Clower, San Antonio, TX, 78201",
+      "latitude": 29.477425,
+      "longitude": -98.514989
+    },
+    {
+      "id": "7306452433.0",
+      "formatted_address": "275 E Lullwood Ave, San Antonio, TX, 78212",
+      "latitude": 29.466235,
+      "longitude": -98.488734
+    },
+    {
+      "id": "8176357107.0",
+      "formatted_address": "434 Elmwood Dr, San Antonio, TX, 78212",
+      "latitude": 29.468585,
+      "longitude": -98.500839
+    },
+    {
+      "id": "9296290084.0",
+      "formatted_address": "438 W Kings Hwy Apt 2, San Antonio, TX, 78212",
+      "latitude": 29.459652,
+      "longitude": -98.500832
+    },
+    {
+      "id": "7796989688.0",
+      "formatted_address": "1511 W Mistletoe Ave Unit 1, San Antonio, TX, 78201",
+      "latitude": 29.454642,
+      "longitude": -98.519767
+    },
+    {
+      "id": "7542482318.0",
+      "formatted_address": "818 Waverly Ave, San Antonio, TX, 78201",
+      "latitude": 29.446922,
+      "longitude": -98.52327
+    },
+    {
+      "id": "9916046546.0",
+      "formatted_address": "518 W French Pl Apt 2, San Antonio, TX, 78212",
+      "latitude": 29.449915,
+      "longitude": -98.498886
+    },
+    {
+      "id": "9676072226.0",
+      "formatted_address": "9012 Maverick Draw, San Antonio, TX, 78250",
+      "latitude": 29.516199,
+      "longitude": -98.660545
+    },
+    {
+      "id": "7661299961.0",
+      "formatted_address": "315 W Norwood Ct Unit 1, San Antonio, TX, 78212",
+      "latitude": 29.468198,
+      "longitude": -98.498019
+    },
+    {
+      "id": "9619250993.0",
+      "formatted_address": "8415 Cranberry Hl Unit 2, San Antonio, TX, 78254",
+      "latitude": 29.519604,
+      "longitude": -98.660561
+    },
+    {
+      "id": "7946516455.0",
+      "formatted_address": "11001 Wurzbach Rd Apt 105, San Antonio, TX, 78230",
+      "latitude": 29.542657,
+      "longitude": -98.551458
+    },
+    {
+      "id": "9226638407.0",
+      "formatted_address": "120 Vassar Lane-Olmos Park Ter, San Antonio, TX, 78212",
+      "latitude": 29.470148,
+      "longitude": -98.493477
+    },
+    {
+      "id": "nan",
+      "formatted_address": "1130 Broadway St, San Antonio, TX",
+      "latitude": 29.436527,
+      "longitude": -98.47866
+    },
+    {
+      "id": "9832267497.0",
+      "formatted_address": "1823 Burnet St Unit 201, San Antonio, TX, 78202",
+      "latitude": 29.429185,
+      "longitude": -98.455288
+    },
+    {
+      "id": "9968078424.0",
+      "formatted_address": "333 E Hafer Unit 102, San Antonio, TX, 78214",
+      "latitude": 29.382429,
+      "longitude": -98.496978
+    },
+    {
+      "id": "8850672964.0",
+      "formatted_address": "314 W Ridgewood Ct, San Antonio, TX, 78212",
+      "latitude": 29.466744,
+      "longitude": -98.497949
+    },
+    {
+      "id": "7323631329.0",
+      "formatted_address": "7316 Trail Xing, San Antonio, TX, 78250",
+      "latitude": 29.507991,
+      "longitude": -98.65166
+    },
+    {
+      "id": "8019094830.0",
+      "formatted_address": "150 Sonora St, San Antonio, TX, 78204",
+      "latitude": 29.405941,
+      "longitude": -98.508818
+    },
+    {
+      "id": "8676913246.0",
+      "formatted_address": "1334 Clower, San Antonio, TX, 78201",
+      "latitude": 29.477428,
+      "longitude": -98.517037
+    },
+    {
+      "id": "7699095330.0",
+      "formatted_address": "1340 Vermont St, San Antonio, TX, 78211",
+      "latitude": 29.378186,
+      "longitude": -98.527981
+    },
+    {
+      "id": "9911160150.0",
+      "formatted_address": "131 Bethany Pl, San Antonio, TX, 78201",
+      "latitude": 29.474368,
+      "longitude": -98.543896
+    },
+    {
+      "id": "9936787103.0",
+      "formatted_address": "715 W Hollywood Ave Unit 2, San Antonio, TX, 78212",
+      "latitude": 29.464207,
+      "longitude": -98.504852
+    },
+    {
+      "id": "7887275745.0",
+      "formatted_address": "1031 W Mulberry Ave Apt 1, San Antonio, TX, 78201",
+      "latitude": 29.457014,
+      "longitude": -98.511206
+    },
+    {
+      "id": "9312036650.0",
+      "formatted_address": "630 Montana St Unit 203, San Antonio, TX, 78203",
+      "latitude": 29.418358,
+      "longitude": -98.470428
+    },
+    {
+      "id": "8402827834.0",
+      "formatted_address": "125 Hess St Apt 202, San Antonio, TX, 78212",
+      "latitude": 29.448684,
+      "longitude": -98.504856
+    },
+    {
+      "id": "8185500834.0",
+      "formatted_address": "431 Fulton Ave, San Antonio, TX, 78212",
+      "latitude": 29.461712,
+      "longitude": -98.500678
+    },
+    {
+      "id": "8726967001.0",
+      "formatted_address": "331 E Rosewood Ave, San Antonio, TX, 78212",
+      "latitude": 29.465356,
+      "longitude": -98.487429
+    },
+    {
+      "id": "7265215419.0",
+      "formatted_address": "422 Hays St, San Antonio, TX, 78202",
+      "latitude": 29.42975,
+      "longitude": -98.475306
+    },
+    {
+      "id": "7762542080.0",
+      "formatted_address": "635 E Ashby Pl, San Antonio, TX, 78212",
+      "latitude": 29.448769,
+      "longitude": -98.486424
+    },
+    {
+      "id": "7870841186.0",
+      "formatted_address": "11815 Vance Jackson Rd Apt 1605, San Antonio, TX, 78230",
+      "latitude": 29.549308,
+      "longitude": -98.569466
+    },
+    {
+      "id": "9053849588.0",
+      "formatted_address": "726 W Russell Pl Apt 1, San Antonio, TX, 78212",
+      "latitude": 29.450785,
+      "longitude": -98.50238
+    },
+    {
+      "id": "7582845705.0",
+      "formatted_address": "1007 Ripley Ave, San Antonio, TX, 78212",
+      "latitude": 29.457944,
+      "longitude": -98.504684
+    },
+    {
+      "id": "9450198518.0",
+      "formatted_address": "130 Belmont Ave, San Antonio, TX, 78202",
+      "latitude": 29.420097,
+      "longitude": -98.459976
+    },
+    {
+      "id": "9133710564.0",
+      "formatted_address": "511 Iowa St Unit 2, San Antonio, TX, 78203",
+      "latitude": 29.412231,
+      "longitude": -98.474297
+    },
+    {
+      "id": "7886788139.0",
+      "formatted_address": "608 E Mistletoe Ave, San Antonio, TX, 78212",
+      "latitude": 29.453056,
+      "longitude": -98.487093
+    },
+    {
+      "id": "9103735727.0",
+      "formatted_address": "1031 Shook Ave, San Antonio, TX, 78212",
+      "latitude": 29.46755,
+      "longitude": -98.487361
+    },
+    {
+      "id": "7970748307.0",
+      "formatted_address": "1203 Lamar St, San Antonio, TX, 78202",
+      "latitude": 29.4317,
+      "longitude": -98.462637
+    },
+    {
+      "id": "8515786683.0",
+      "formatted_address": "329 Saint Francis Ave, San Antonio, TX, 78204",
+      "latitude": 29.402381,
+      "longitude": -98.49676
+    },
+    {
+      "id": "7547478400.0",
+      "formatted_address": "1225 Saltillo St Unit 1, San Antonio, TX, 78207",
+      "latitude": 29.411653,
+      "longitude": -98.532331
+    },
+    {
+      "id": "9033145533.0",
+      "formatted_address": "127 Clovis Pl, San Antonio, TX, 78221",
+      "latitude": 29.350922,
+      "longitude": -98.505039
+    },
+    {
+      "id": "9706725318.0",
+      "formatted_address": "8038 Broadway Apt 115J, San Antonio, TX, 78209",
+      "latitude": 29.508808,
+      "longitude": -98.465744
+    },
+    {
+      "id": "9912769943.0",
+      "formatted_address": "1426 Center St, San Antonio, TX, 78202",
+      "latitude": 29.422314,
+      "longitude": -98.458069
+    },
+    {
+      "id": "8561846685.0",
+      "formatted_address": "7251 Brandyridge, San Antonio, TX, 78250",
+      "latitude": 29.506044,
+      "longitude": -98.687303
+    },
+    {
+      "id": "8803439864.0",
+      "formatted_address": "1323 Burnet St, San Antonio, TX, 78202",
+      "latitude": 29.429195,
+      "longitude": -98.462965
+    },
+    {
+      "id": "9320367040.0",
+      "formatted_address": "2815 S Pine St Unit 101, San Antonio, TX, 78210",
+      "latitude": 29.387506,
+      "longitude": -98.46981
+    },
+    {
+      "id": "7660647547.0",
+      "formatted_address": "7611 Scenic Glade, San Antonio, TX, 78249",
+      "latitude": 29.570616,
+      "longitude": -98.640489
+    },
+    {
+      "id": "8085728261.0",
+      "formatted_address": "138 Paul St, San Antonio, TX, 78203",
+      "latitude": 29.415088,
+      "longitude": -98.468699
+    },
+    {
+      "id": "7157905311.0",
+      "formatted_address": "342 Barbara Dr, San Antonio, TX, 78216",
+      "latitude": 29.503116,
+      "longitude": -98.484797
+    },
+    {
+      "id": "8718783718.0",
+      "formatted_address": "8033 N New Braunfels Ave Unit 106, San Antonio, TX, 78209",
+      "latitude": 29.506523,
+      "longitude": -98.460042
+    },
+    {
+      "id": "7004588269.0",
+      "formatted_address": "358 Claremont Ave Apt 5, San Antonio, TX, 78209",
+      "latitude": 29.456417,
+      "longitude": -98.461365
+    },
+    {
+      "id": "7838686550.0",
+      "formatted_address": "1125 Virginia Blvd, San Antonio, TX, 78203",
+      "latitude": 29.411322,
+      "longitude": -98.464429
+    },
+    {
+      "id": "8998690168.0",
+      "formatted_address": "101 Fenimore Ave Unit 6, San Antonio, TX, 78209",
+      "latitude": 29.479708,
+      "longitude": -98.462858
+    },
+    {
+      "id": "9876118552.0",
+      "formatted_address": "217 Natalen Ave Apt 5, San Antonio, TX, 78209",
+      "latitude": 29.456095,
+      "longitude": -98.467773
+    },
+    {
+      "id": "9820793677.0",
+      "formatted_address": "118 Funston Pl Apt 4, San Antonio, TX, 78209",
+      "latitude": 29.45738,
+      "longitude": -98.468307
+    },
+    {
+      "id": "8773981396.0",
+      "formatted_address": "7815 Broadway Apt 404, San Antonio, TX, 78209",
+      "latitude": 29.503167,
+      "longitude": -98.467242
+    },
+    {
+      "id": "9776642742.0",
+      "formatted_address": "118 Funston Pl Apt 3, San Antonio, TX, 78209",
+      "latitude": 29.45738,
+      "longitude": -98.468307
+    },
+    {
+      "id": "7191957729.0",
+      "formatted_address": "507 Exeter Rd, San Antonio, TX, 78209",
+      "latitude": 29.485243,
+      "longitude": -98.447444
+    },
+    {
+      "id": "8204830213.0",
+      "formatted_address": "906 S Gevers St, San Antonio, TX, 78210",
+      "latitude": 29.410586,
+      "longitude": -98.456413
+    },
+    {
+      "id": "9232347638.0",
+      "formatted_address": "2130 Virginia Blvd Unit A, San Antonio, TX, 78203",
+      "latitude": 29.410664,
+      "longitude": -98.451012
+    },
+    {
+      "id": "7583569686.0",
+      "formatted_address": "109 Utah St, San Antonio, TX, 78210",
+      "latitude": 29.408984,
+      "longitude": -98.469787
+    },
+    {
+      "id": "8322474239.0",
+      "formatted_address": "138 E Harding Blvd Unit 1, San Antonio, TX, 78214",
+      "latitude": 29.351286,
+      "longitude": -98.487232
+    }
+  ]
+}

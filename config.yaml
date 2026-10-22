@@ -18,13 +18,14 @@ filters:
   min_rent: 1200
   max_rent: 2200
   min_beds: 2
+  max_beds: 2
   min_baths: 1.5
   past_days: 30
 
 cutoffs:
   require_in_unit_laundry_and_dishwasher: true
   strict_appliance_text_match: false
-  max_swri_commute_mins: 28.0
+  max_swri_commute_mins: 32.0
   max_grocery_dist_m: 2400.0
   max_park_trail_dist_m: 1600.0
   min_highway_buffer_m: 200.0

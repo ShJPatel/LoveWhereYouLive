@@ -1,6 +1,6 @@
 {
-  "test_01_url_address_parser": 0.0009,
-  "test_02_persistent_memory_loading": 0.0007,
-  "test_03_criteria_functions_mock_row": 0.0073,
-  "test_04_feedback_recording_and_complex_blacklist": 0.0071
+  "test_01_url_address_parser": 0.0004,
+  "test_02_persistent_memory_loading": 0.0005,
+  "test_03_criteria_functions_mock_row": 0.0045,
+  "test_04_feedback_recording_and_complex_blacklist": 0.0012
 }

@@ -51,7 +51,7 @@ def address_from_url_or_query(url_or_address):
     m_rentals = re.search(r"rentals/details/([^/?#]+)", s)
     if m_rentals:
         slug = m_rentals.group(1)
-        slug = re.sub(r"-[A-Z][0-9_-]+$", "", slug)
+        slug = re.sub(r"[-_][A-Z][0-9_-]+$", "", slug)
         parts = slug.split("_")
         return " ".join(p.replace("-", " ") for p in parts)
 

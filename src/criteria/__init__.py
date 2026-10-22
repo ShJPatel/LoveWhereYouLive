@@ -281,7 +281,81 @@ def score_modern_interior(row, ctx):
         "interior_tags": ", ".join(tags) if tags else "Standard Baseline"
     }
 
+def criterion_required_appliances_gatekeeper(row, ctx):
+    """
+    Evaluates in-unit washer/dryer and dishwasher availability.
+    Crucially distinguishes physical in-unit machines included from 'hookups/connections only'.
+    """
+    desc = str(row.get('description', '') or '').lower()
+    year_built = pd.to_numeric(row.get('year_built'), errors='coerce')
+    cutoffs = ctx.get('config', {}).get('cutoffs', {})
+    strict = cutoffs.get('strict_appliance_text_match', False)
+    require_in_unit = cutoffs.get('require_in_unit_laundry_and_dishwasher', True)
+
+    # 1. Hard dealbreaker rejection for shared/offsite laundry
+    shared_only_flags = [
+        'shared laundry', 'laundromat on site', 'coin-operated', 'community laundry',
+        'laundry facility', 'on-site laundry', 'no washer', 'no laundry in unit'
+    ]
+    if any(flag in desc for flag in shared_only_flags) and not any(k in desc for k in ['in-unit', 'in unit', 'inside unit']):
+        return {
+            'appliances_status': 'REJECT: Shared/Community Laundry Only',
+            'passes_appliance_gate': False,
+            'wd_machine_included': False,
+            'wd_connections_only': False
+        }
+
+    # 2. Distinguish W/D Hookups Only vs Machines Included
+    hookups_only_flags = [
+        'hookups only', 'connections only', 'w/d hookup', 'w/d connection',
+        'washer/dryer connection', 'washer dryer connection', 'washer / dryer hookup',
+        'washer/dryer hookups', 'washer and dryer hookups', 'washer connections', 'dryer connections'
+    ]
+    machines_included_flags = [
+        'w/d included', 'washer/dryer included', 'washer and dryer included',
+        'in-unit washer/dryer', 'in-unit washer & dryer', 'in-unit washer and dryer',
+        'washer/dryer in unit', 'washer and dryer in unit', 'washer / dryer in unit',
+        'full-size washer and dryer', 'stackable washer/dryer included', 'in unit w/d'
+    ]
+
+    is_hookups_only = any(h in desc for h in hookups_only_flags) and not any(inc in desc for inc in machines_included_flags)
+    is_machine_included = any(inc in desc for inc in machines_included_flags)
+
+    has_dishwasher = (
+        'dishwasher' in desc or 
+        ('stainless' in desc and 'appliances' in desc) or 
+        (pd.notna(year_built) and year_built >= 2010)
+    )
+
+    if is_machine_included:
+        status = 'Verified (In-Unit Machines Included)'
+        passes = True
+    elif is_hookups_only:
+        status = 'W/D Hookups Only (No Machines Provided)'
+        passes = not strict  # In strict mode, reject hookups-only
+    elif any(t in desc for t in ['washer', 'dryer', 'w/d', 'laundry room', 'utility room']):
+        status = 'Likely (W/D Mentioned - Verify in Photos)'
+        passes = True
+    elif strict:
+        status = 'REJECT: No Laundry Confirmed in Text'
+        passes = False
+    else:
+        status = 'Unconfirmed (Verify in Tour/Photos)'
+        passes = True
+
+    if require_in_unit and not has_dishwasher and strict:
+        passes = False
+        status += ' | Missing Dishwasher'
+
+    return {
+        'appliances_status': status,
+        'passes_appliance_gate': passes,
+        'wd_machine_included': is_machine_included,
+        'wd_connections_only': is_hookups_only
+    }
+
 ACTIVE_CRITERIA = [
+    criterion_required_appliances_gatekeeper,
     score_commute,
     score_grocery,
     score_park_trail,
