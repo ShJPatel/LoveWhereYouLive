@@ -4,13 +4,38 @@
   "taste_profile": {
     "liked_kitchen_photo_urls": [],
     "disliked_kitchen_photo_urls": [],
-    "liked_property_addresses": [],
+    "liked_property_addresses": [
+      "806 W French Pl, San Antonio, TX, 78212",
+      "12130 Alamo Ranch Pkwy, San Antonio, TX",
+      "7716 Louis Pasteur Dr, San Antonio, TX, 78229"
+    ],
     "rejected_property_addresses": [],
     "rejection_reasons_log": [
       {
         "date": "2026-10-19",
         "reason": "First result had an old kitchen that was falsely scored 100/100 due to max() pooling and missing Step 4 cell.",
         "rule_learned": "Strict kitchen isolation + 5-axis weakest-link penalty + direct cosine similarity against disliked kitchen embeddings."
+      },
+      {
+        "date": "2026-10-21",
+        "address": "806 W French Pl, San Antonio, TX, 78212",
+        "liked": true,
+        "kitchen_photo_url": null,
+        "reason": "Added via Single-Link Inspector"
+      },
+      {
+        "date": "2026-10-21",
+        "address": "12130 Alamo Ranch Pkwy, San Antonio, TX",
+        "liked": true,
+        "kitchen_photo_url": null,
+        "reason": "Added via Single-Link Inspector"
+      },
+      {
+        "date": "2026-10-21",
+        "address": "7716 Louis Pasteur Dr, San Antonio, TX, 78229",
+        "liked": true,
+        "kitchen_photo_url": null,
+        "reason": "Added via Single-Link Inspector"
       }
     ],
     "excluded_grocery_chains": [
@@ -27,7 +52,27 @@
       "furnished Finder",
       "student housing",
       "room for rent"
+    ],
+    "favorites_notes": {
+      "806 W French Pl, San Antonio, TX, 78212": "[2026-10-21] Added via Single-Link Inspector",
+      "12130 Alamo Ranch Pkwy, San Antonio, TX": "[2026-10-21] Added via Single-Link Inspector",
+      "7716 Louis Pasteur Dr, San Antonio, TX, 78229": "[2026-10-21] Added via Single-Link Inspector"
+    },
+    "blacklisted_complex_keywords": [],
+    "tracked_custom_listings": [
+      {
+        "formatted_address": "7716 Louis Pasteur Dr, San Antonio, TX, 78229",
+        "latitude": 29.507802,
+        "longitude": -98.568283,
+        "list_price": 1650.0,
+        "beds": 2.0,
+        "full_baths": 2.0,
+        "primary_photo": "https://ar.rdcpix.com/81afb9bf4ec11cb6490e76e4458669c7c-f4200087788od-w480_h360_x2.webp?w=1080&q=75",
+        "property_url": "https://www.realtor.com/rentals/details/7716-Louis-Pasteur-Dr_San-Antonio_TX_78229_M98937-73300",
+        "description": "Apartment complex at 7716 Louis Pasteur Dr, San Antonio, TX, 78229"
+      }
     ]
   },
-  "learned_weights_override": {}
+  "learned_weights_override": {},
+  "feedback_log": []
 }

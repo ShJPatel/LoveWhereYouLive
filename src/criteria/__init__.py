@@ -1,300 +1,297 @@
-import math
+import os
 import re
 import numpy as np
 import pandas as pd
 
-CIRCUITY_FACTOR = 1.32
-WALK_SPEED_M_MIN = 80.0
-BIKE_SPEED_M_MIN = 250.0
+def _extract_tree_and_metadata(item):
+    """
+    Polymorphically extracts (kd_tree, names, brands) from:
+    - dict: {'tree': kd_tree, 'names': [...], 'brands': [...]}
+    - tuple: (kd_tree, names, brands) or (kd_tree, names) or (kd_tree,)
+    - raw cKDTree object directly
+    """
+    if item is None:
+        return None, [], []
+    if isinstance(item, dict):
+        return item.get('tree'), item.get('names', []), item.get('brands', [])
+    elif isinstance(item, (tuple, list)):
+        tree = item[0] if len(item) > 0 else None
+        names = item[1] if len(item) > 1 else []
+        brands = item[2] if len(item) > 2 else []
+        return tree, names, brands
+    else:
+        return item, [], []
 
-def haversine_km(lat1, lon1, lat2, lon2):
-    R = 6371.0
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1))*math.cos(math.radians(lat2))*math.sin(dlon/2)**2
-    return 2 * R * math.asin(math.sqrt(a))
-
-def criterion_required_appliances_gatekeeper(row, ctx):
-    desc = str(row.get('description', '') or '').lower()
-    year_built = row.get('year_built', np.nan)
-    strict = ctx['config']['cutoffs'].get('strict_appliance_text_match', False)
-
-    shared_only_flags = ['shared laundry', 'laundromat on site', 'no washer', 'no laundry in unit', 'coin-operated laundry']
-    if any(flag in desc for flag in shared_only_flags):
-        return {'appliances_status': 'REJECT: Shared/No In-Unit Laundry', 'passes_appliance_gate': False}
-
-    in_unit_terms = ['in-unit', 'in unit', 'washer/dryer', 'washer and dryer', 'w/d included', 'w/d connections', 'laundry room', 'utility room', 'full-size washer']
-    has_in_unit = any(t in desc for t in in_unit_terms)
-    has_dishwasher = 'dishwasher' in desc or ('stainless' in desc and 'appliances' in desc) or (pd.notna(year_built) and year_built >= 2005)
-
-    if has_in_unit and has_dishwasher:
-        return {'appliances_status': 'Verified (In-Unit W/D + Dishwasher)', 'passes_appliance_gate': True}
-    elif strict:
-        return {'appliances_status': 'REJECT: Unconfirmed in Text', 'passes_appliance_gate': False}
-    return {'appliances_status': 'Likely (Verify W/D in Photos)', 'passes_appliance_gate': True}
-
-def criterion_garage_and_bike_storage(row, ctx):
-    desc = str(row.get('description', '') or '').lower()
-    prop_type = str(row.get('style', '') or row.get('type', '') or '').lower()
-    parking_spaces = row.get('parking_garage', np.nan)
-
-    score = 30.0
-    features = []
-    if pd.notna(parking_spaces) and float(parking_spaces) >= 1:
-        score += 45.0
-        features.append(f'{int(float(parking_spaces))}-Car Garage')
-    elif any(k in desc for k in ['attached garage', 'private garage', '1-car garage', '2-car garage', 'two-car garage', 'single car garage']):
-        score += 45.0
-        features.append('Private/Attached Garage')
-    elif 'carport' in desc or 'covered parking' in desc:
-        score += 20.0
-        features.append('Covered/Carport')
-
-    if any(k in desc for k in ['bike storage', 'bicycle storage', 'bike rack', 'bike repair', 'storage unit', 'storage closet']):
-        score += 25.0
-        features.append('Dedicated Bike/Gear Storage')
-    if 'townhome' in prop_type or 'townhouse' in prop_type or 'townhome' in desc or 'first floor' in desc:
-        score += 15.0
-        features.append('Townhome/Ground Access')
-
-    return {
-        'garage_bike_features': ', '.join(features) if features else 'Standard Surface Parking',
-        'garage_bike_score': round(float(np.clip(score, 0.0, 100.0)), 1)
-    }
-
-def criterion_costco_proximity(row, ctx):
+def score_commute(row, ctx):
+    """Calculates SwRI rush-hour commute time and corridor scoring."""
+    swri_x, swri_y = 537785.0, 3257850.0
+    x, y = row['utm_x'], row['utm_y']
+    dist_km = np.sqrt((x - swri_x)**2 + (y - swri_y)**2) / 1000.0
+    
     lat, lon = row['latitude'], row['longitude']
-    best_name, min_road_km = '', 999.0
-    for c in ctx['config']['costco_locations']:
-        clat, clon = c['coords']
-        road_km = haversine_km(lat, lon, clat, clon) * 1.28
-        if road_km < min_road_km:
-            min_road_km, best_name = road_km, c['name']
-    est_drive_mins = (min_road_km / 48.0) * 60.0 + 2.0
-    score = np.clip(100 - ((est_drive_mins - 7.0) / (25.0 - 7.0)) * 100, 0, 100)
+    if lon < -98.65:
+        corridor = "Far West (Loop 1604 / Hwy 151)"
+        circuity = 1.35
+        speed_kmh = 42.0
+    elif lat > 29.52:
+        corridor = "North / UTSA / I-10"
+        circuity = 1.30
+        speed_kmh = 40.0
+    elif -98.55 <= lon <= -98.45 and lat <= 29.48:
+        corridor = "Reverse Commute (Central/North)"
+        circuity = 1.22
+        speed_kmh = 48.0
+    else:
+        corridor = "General Arterial / Suburb"
+        circuity = 1.28
+        speed_kmh = 44.0
+        
+    rush_mins = round((dist_km * circuity / speed_kmh) * 60.0 + 3.0, 1)
+    score = round(float(np.clip(100.0 - (rush_mins - 12.0) * 5.0, 0.0, 100.0)), 1)
     return {
-        'nearest_costco': best_name,
-        'costco_drive_mins': round(est_drive_mins, 1),
-        'costco_score': round(float(score), 1)
+        "commute_score": score,
+        "swri_rush_hour_mins": rush_mins,
+        "commute_corridor": corridor
     }
 
-def criterion_grocery_proximity(row, ctx):
-    tree, names = ctx['trees']['grocery']
-    distances, indices = tree.query([row['utm_x'], row['utm_y']], k=min(5, len(names)))
-    
-    if not isinstance(indices, np.ndarray):
-        indices = [indices]
-        distances = [distances]
+def score_grocery(row, ctx):
+    """Calculates cycling and walking proximity to quality supermarkets (H-E-B, Trader Joe's, Whole Foods)."""
+    trees = ctx.get('trees', {})
+    if not trees or 'grocery' not in trees:
+        return {"grocery_score": 50.0, "grocery_dist_m": 2000.0, "nearest_grocery": "Unknown", "grocery_walk_mins": 25.0, "grocery_bike_mins": 8.0}
         
-    best_idx = indices[0]
-    best_dist = distances[0]
-    best_name = names[best_idx]
+    x, y = row['utm_x'], row['utm_y']
+    tree_obj, names, brands = _extract_tree_and_metadata(trees.get('grocery'))
+    if tree_obj is None:
+        return {"grocery_score": 50.0, "grocery_dist_m": 2000.0, "nearest_grocery": "Unknown", "grocery_walk_mins": 25.0, "grocery_bike_mins": 8.0}
+        
+    k_val = min(5, len(names)) if names else 1
+    dists, idxs = tree_obj.query([[x, y]], k=k_val)
+    dists = np.atleast_1d(dists).flatten()
+    idxs = np.atleast_1d(idxs).flatten()
     
-    for idx, dist in zip(indices, distances):
-        name = names[idx].lower()
-        if 'walmart' not in name:
-            best_idx = idx
-            best_dist = dist
-            best_name = names[idx]
+    valid_name = "Supermarket"
+    valid_dist = float(dists[0])
+    for d, idx in zip(dists, idxs):
+        name = names[idx] if idx < len(names) else "Supermarket"
+        brand = brands[idx] if idx < len(brands) else ""
+        full = f"{name} {brand}".lower()
+        if "walmart" not in full:
+            valid_name = name
+            valid_dist = float(d)
             break
             
-    network_dist_m = best_dist * CIRCUITY_FACTOR
-    walk_mins = network_dist_m / WALK_SPEED_M_MIN
-    bike_mins = network_dist_m / BIKE_SPEED_M_MIN
-    score = np.clip(100 - ((network_dist_m - 400) / (2400 - 400)) * 100, 0, 100)
+    walk_mins = round((valid_dist * 1.25 / 80.0), 1)
+    bike_mins = round((valid_dist * 1.20 / 250.0), 1)
+    score = round(float(np.clip(100.0 - (valid_dist - 600.0) * (50.0 / 1200.0), 0.0, 100.0)), 1)
     return {
-        'nearest_grocery': best_name,
-        'grocery_dist_m': round(network_dist_m),
-        'grocery_walk_mins': round(walk_mins, 1),
-        'grocery_bike_mins': round(bike_mins, 1),
-        'grocery_score': round(float(score), 1)
+        "grocery_score": score,
+        "grocery_dist_m": round(valid_dist),
+        "nearest_grocery": valid_name,
+        "grocery_walk_mins": walk_mins,
+        "grocery_bike_mins": bike_mins
     }
 
-def criterion_park_trail_proximity(row, ctx):
-    tree, names = ctx['trees']['park']
-    dist_euclidean, idx = tree.query([row['utm_x'], row['utm_y']])
-    network_dist_m = dist_euclidean * 1.25
-    walk_mins = network_dist_m / WALK_SPEED_M_MIN
-    score = np.clip(100 - ((network_dist_m - 250) / (1600 - 250)) * 100, 0, 100)
-    return {
-        'nearest_park_trail': names[idx],
-        'park_dist_m': round(network_dist_m),
-        'park_walk_mins': round(walk_mins, 1),
-        'park_trail_score': round(float(score), 1)
-    }
-
-def criterion_swri_rush_hour_commute(row, ctx):
-    lat, lon = row['latitude'], row['longitude']
-    swri_lat, swri_lon = ctx['config']['workplace']['coords']
-    road_km = haversine_km(lat, lon, swri_lat, swri_lon) * 1.30
-    if lon < -98.68:
-        avg_speed_kmh, corridor_note = 28.0, 'West Inbound (Heavy Culebra/1604 Traffic)'
-    elif lon > -98.58:
-        avg_speed_kmh, corridor_note = 50.0, 'Reverse Commute (Central/North)'
-    else:
-        avg_speed_kmh, corridor_note = 40.0, 'Inner West / Loop 410 Local'
-    est_commute_mins = (road_km / avg_speed_kmh) * 60.0 + 3.0
-    score = np.clip(100 - ((est_commute_mins - 8.0) / (30.0 - 8.0)) * 100, 0, 100)
-    return {
-        'swri_road_km': round(road_km, 1),
-        'swri_rush_hour_mins': round(est_commute_mins, 1),
-        'commute_corridor': corridor_note,
-        'commute_score': round(float(score), 1)
-    }
-
-def criterion_pollution_and_highway_buffer(row, ctx):
-    tree, _ = ctx['trees']['highway']
-    hwy_dist_m, _ = tree.query([row['utm_x'], row['utm_y']])
-    if hwy_dist_m < 100:
-        score = 15.0
-    elif hwy_dist_m < 250:
-        score = 50.0 + ((hwy_dist_m - 100) / 150.0) * 35.0
-    else:
-        score = np.clip(85.0 + ((hwy_dist_m - 250) / 500.0) * 15.0, 85.0, 100.0)
-    return {
-        'highway_buffer_m': round(hwy_dist_m),
-        'pollution_highway_score': round(float(score), 1)
-    }
-
-def criterion_modern_appliances_and_open_floorplan(row, ctx):
-    desc = str(row.get('description', '') or '').lower()
-    year_built = row.get('year_built', np.nan)
-    score, matched_tags = 50.0, []
-    positive_keywords = {
-        'open floor': 18, 'open-concept': 18, 'open concept': 18,
-        'stainless steel': 15, 'stainless appliances': 15,
-        'quartz': 12, 'granite': 10, 'kitchen island': 12, 'island kitchen': 12,
-        'gas range': 12, 'gas stove': 12, 'modern': 8, 'renovated': 10
-    }
-    for kw, pts in positive_keywords.items():
-        if kw in desc:
-            score += pts
-            matched_tags.append(kw)
-    if pd.notna(year_built) and year_built >= 2018:
-        score += 20
-        matched_tags.append(f'built_{int(year_built)}')
-    return {
-        'interior_tags': ', '.join(matched_tags) if matched_tags else 'Standard/Unlisted',
-        'modern_interior_score': round(float(np.clip(score, 10.0, 100.0)), 1)
-    }
-
-def criterion_water_softener_and_filtration(row, ctx):
-    desc = str(row.get('description', '') or '').lower()
-    score, tags = 40.0, []
-    softener_keywords = {
-        'water softener': 40, 'softener loop': 35, 'softened water': 35,
-        'reverse osmosis': 25, 'ro system': 25, 'filtration system': 20,
-        'water filtration': 20, 'tankless water heater': 15
-    }
-    for kw, pts in softener_keywords.items():
-        if kw in desc:
-            score += pts
-            tags.append(kw)
-    return {
-        'water_softener_tags': ', '.join(tags) if tags else 'Standard Hard Water (No Softener Listed)',
-        'water_softener_score': round(float(np.clip(score, 10.0, 100.0)), 1)
-    }
-
-def criterion_pet_friendly_and_hard_flooring(row, ctx):
-    desc = str(row.get('description', '') or '').lower()
-    score, tags = 60.0, []
-    hard_flooring_terms = ['vinyl plank', 'lvp', 'wood floor', 'hardwood', 'tile flooring', 'stained concrete', 'no carpet']
-    carpet_flags = ['wall-to-wall carpet', 'carpet in bedrooms', 'new carpet']
-    cat_terms = ['cats allowed', 'cat friendly', 'pets allowed', 'pet friendly', 'no pet rent']
-    
-    if any(term in desc for term in hard_flooring_terms):
-        score += 25.0
-        tags.append('Hard Flooring / LVP')
-    elif any(flag in desc for flag in carpet_flags):
-        score -= 20.0
-        tags.append('Carpeted Bedrooms')
-    if any(term in desc for term in cat_terms):
-        score += 15.0
-        tags.append('Pet/Cat Friendly')
+def score_park_trail(row, ctx):
+    """Calculates distance to nearest municipal park, greenway trail, or nature reserve."""
+    trees = ctx.get('trees', {})
+    if not trees or 'parks' not in trees:
+        return {"park_trail_score": 50.0, "park_dist_m": 1200.0, "nearest_park_trail": "Park/Trail", "park_walk_mins": 15.0}
         
-    return {
-        'pet_flooring_tags': ', '.join(tags) if tags else 'Standard Flooring',
-        'pet_flooring_score': round(float(np.clip(score, 10.0, 100.0)), 1)
-    }
-
-def criterion_advanced_junk_fee_parser(row, ctx):
-    desc = str(row.get('description', '') or '').lower()
-    fee_patterns = r'\$(\d+)\s*(?:/mo)?\s*(?:valet|trash|waste|package|internet|tech|pest|amenity|fee)'
-    matches = re.findall(fee_patterns, desc)
-    extracted_fees = sum([int(m) for m in matches])
-    utilities_included = any(k in desc for k in ['water included', 'trash included', 'internet included', 'free wifi', 'all bills paid'])
-    
-    score = 100.0 - min(extracted_fees, 50.0)
-    if utilities_included:
-        score += 10.0
-    return {
-        'extracted_monthly_fees': extracted_fees,
-        'utilities_included': utilities_included,
-        'effective_rent_score': round(float(np.clip(score, 30.0, 100.0)), 1)
-    }
-
-def criterion_spatial_noise_buffer(row, ctx):
-    lat, lon = row['latitude'], row['longitude']
-    utm_x, utm_y = row['utm_x'], row['utm_y']
-    
-    rail_dist_m = 9999.0
-    if 'railway' in ctx['trees']:
-        rail_tree, _ = ctx['trees']['railway']
-        rail_dist_m, _ = rail_tree.query([utm_x, utm_y])
+    x, y = row['utm_x'], row['utm_y']
+    tree_obj, names, _ = _extract_tree_and_metadata(trees.get('parks'))
+    if tree_obj is None:
+        return {"park_trail_score": 50.0, "park_dist_m": 1200.0, "nearest_park_trail": "Park/Trail", "park_walk_mins": 15.0}
         
-    sat_coords = (29.5338, -98.4698)
-    sat_dist_km = haversine_km(lat, lon, sat_coords[0], sat_coords[1])
+    d, idx = tree_obj.query([[x, y]], k=1)
+    dist = float(np.atleast_1d(d).flatten()[0])
+    idx_val = int(np.atleast_1d(idx).flatten()[0])
+    name = names[idx_val] if idx_val < len(names) else "Park/Trail"
+    walk_mins = round((dist * 1.25 / 80.0), 1)
     
-    score, notes = 90.0, []
-    if rail_dist_m < 200:
-        score -= 40.0
-        notes.append(f'Close to Railway ({round(rail_dist_m)}m)')
-    elif rail_dist_m < 500:
-        score -= 15.0
-        notes.append(f'Moderate Rail Proximity ({round(rail_dist_m)}m)')
-    if sat_dist_km < 6.0:
-        score -= 25.0
-        notes.append(f'SAT Airport Approach ({round(sat_dist_km, 1)}km)')
-        
+    score = round(float(np.clip(100.0 - (dist - 400.0) * (50.0 / 1000.0), 0.0, 100.0)), 1)
     return {
-        'railway_dist_m': round(rail_dist_m) if rail_dist_m < 9000 else 9999,
-        'sat_airport_dist_km': round(sat_dist_km, 1),
-        'noise_buffer_notes': ', '.join(notes) if notes else 'Low Noise Corridor',
-        'noise_buffer_score': round(float(np.clip(score, 20.0, 100.0)), 1)
+        "park_trail_score": score,
+        "park_dist_m": round(dist),
+        "nearest_park_trail": name,
+        "park_walk_mins": walk_mins
     }
 
+def score_highway_pollution(row, ctx):
+    """Evaluates acoustic and particulate buffer distance from major highways."""
+    trees = ctx.get('trees', {})
+    if not trees or 'highways' not in trees:
+        return {"pollution_highway_score": 75.0, "highway_buffer_m": 800}
+    x, y = row['utm_x'], row['utm_y']
+    tree_obj, _, _ = _extract_tree_and_metadata(trees.get('highways'))
+    if tree_obj is None:
+        return {"pollution_highway_score": 75.0, "highway_buffer_m": 800}
+    d, _ = tree_obj.query([[x, y]], k=1)
+    dist = float(np.atleast_1d(d).flatten()[0])
+    score = round(float(np.clip((dist - 150.0) * (100.0 / 650.0), 10.0, 100.0)), 1)
+    return {"pollution_highway_score": score, "highway_buffer_m": round(dist)}
 
-def criterion_year_built_recency(row, ctx):
-    """CRITERION: Favors newer construction properties (year_built) to ensure modern structural standards."""
-    year_built = row.get('year_built', np.nan)
-    if pd.isna(year_built):
-        return {'property_age_years': 'Unknown', 'recency_score': 50.0}
-    current_year = 2026
-    age_years = max(0, current_year - int(year_built))
-    if age_years <= 3:
+def score_garage_bike(row, ctx):
+    """Scores garage availability, private carports, and secure bike storage features."""
+    txt = f"{row.get('description', '')} {row.get('formatted_address', '')}".lower()
+    score = 45.0
+    features = []
+    if any(k in txt for k in ["attached garage", "private garage", "1 car garage", "2 car garage"]):
         score = 100.0
-    elif age_years <= 7:
-        score = 85.0
-    elif age_years <= 12:
-        score = 70.0
-    elif age_years <= 20:
-        score = 50.0
+        features.append("Attached/Private Garage")
+    elif any(k in txt for k in ["detached garage", "garage parking", "carport", "covered parking"]):
+        score = 80.0
+        features.append("Detached Garage / Covered Parking")
+    elif "bike storage" in txt or "bike racks" in txt:
+        score = 65.0
+        features.append("Community Bike Storage")
     else:
-        score = np.clip(100.0 - (age_years * 2.5), 15.0, 45.0)
-    return {'property_age_years': age_years, 'recency_score': round(float(score), 1)}
+        features.append("Open Lot / Uncovered")
+    return {"garage_bike_score": score, "garage_bike_features": ", ".join(features)}
+
+def score_costco(row, ctx):
+    """Calculates drive distance to nearest San Antonio Costco Wholesale."""
+    costcos = ctx.get('config', {}).get('costco_locations', [])
+    lat, lon = row['latitude'], row['longitude']
+    best_mins = 99.0
+    best_name = "Costco"
+    for c in costcos:
+        clat, clon = c['coords']
+        d_km = np.sqrt(((lat - clat) * 111.0)**2 + ((lon - clon) * 96.0)**2)
+        mins = round((d_km * 1.30 / 55.0) * 60.0 + 2.0, 1)
+        if mins < best_mins:
+            best_mins = mins
+            best_name = c['name']
+    score = round(float(np.clip(100.0 - (best_mins - 8.0) * 4.5, 10.0, 100.0)), 1)
+    return {"costco_score": score, "costco_drive_mins": best_mins, "nearest_costco": best_name}
+
+def score_recency_age(row, ctx):
+    """Scores property age (newer build / recent renovation vs aging construction)."""
+    yb = pd.to_numeric(row.get('year_built'), errors='coerce')
+    curr_yr = 2026
+    if pd.isna(yb) or yb < 1920:
+        return {"recency_score": 50.0, "property_age_years": "Unknown", "year_built": "N/A"}
+    age = max(0, curr_yr - int(yb))
+    score = round(float(np.clip(100.0 - (age * 2.2), 15.0, 100.0)), 1)
+    return {"recency_score": score, "property_age_years": age, "year_built": int(yb)}
+
+def score_water_softener(row, ctx):
+    """Extracts water softener presence or whole-home filtration mentions."""
+    txt = str(row.get('description', '')).lower()
+    if any(k in txt for k in ["water softener", "soft water", "water filtration", "reverse osmosis"]):
+        return {"water_softener_score": 100.0, "water_softener_tags": "Water Softener / Filtration Mentioned"}
+    return {"water_softener_score": 40.0, "water_softener_tags": "Not Mentioned"}
+
+def score_pet_flooring(row, ctx):
+    """Independent hard flooring criterion (LVP/hardwood/tile vs wall-to-wall carpet)."""
+    txt = str(row.get('description', '')).lower()
+    score = 60.0
+    tags = []
+    if any(k in txt for k in ["no carpet", "hard surface throughout", "vinyl plank throughout", "wood floors throughout", "tile throughout"]):
+        score = 100.0
+        tags.append("100% Hard Surface (No Carpet)")
+    elif any(k in txt for k in ["vinyl plank", "hardwood", "laminate", "tile", "lvp"]):
+        score = 80.0
+        tags.append("Partial Hard Flooring")
+    elif "carpet" in txt:
+        score = 35.0
+        tags.append("Carpet Mentioned")
+    else:
+        tags.append("Unspecified Flooring")
+    return {"pet_flooring_score": score, "pet_flooring_tags": ", ".join(tags)}
+
+def score_effective_rent(row, ctx):
+    """Parses hidden monthly fees and utilities included."""
+    txt = str(row.get('description', '')).lower()
+    fees = 0.0
+    for m in re.finditer(r"\$(\d+)\s*(?:per month|/mo|monthly)?\s*(?:admin|valet|trash|pest|amenity|tech|fee)", txt):
+        fees += float(m.group(1))
+    utils = []
+    if "water included" in txt or "water paid" in txt: utils.append("Water")
+    if "trash included" in txt: utils.append("Trash")
+    if "gas included" in txt: utils.append("Gas")
+    price = pd.to_numeric(row.get('list_price'), errors='coerce')
+    price_val = float(price) if pd.notna(price) else 1600.0
+    eff_price = price_val + fees - (len(utils) * 35.0)
+    score = round(float(np.clip(100.0 - (eff_price - 1200.0) * (60.0 / 1000.0), 20.0, 100.0)), 1)
+    return {
+        "effective_rent_score": score,
+        "extracted_monthly_fees": round(fees),
+        "utilities_included": ", ".join(utils) if utils else "None Stated"
+    }
+
+def score_noise_buffer(row, ctx):
+    """Scores acoustic buffer from railways and SAT airport flight paths."""
+    trees = ctx.get('trees', {})
+    x, y = row['utm_x'], row['utm_y']
+    rail_dist = 2000.0
+    if trees and 'railways' in trees:
+        tree_obj, _, _ = _extract_tree_and_metadata(trees.get('railways'))
+        if tree_obj is not None:
+            d, _ = tree_obj.query([[x, y]], k=1)
+            rail_dist = float(np.atleast_1d(d).flatten()[0])
+    lat, lon = row['latitude'], row['longitude']
+    sat_dist_km = round(np.sqrt(((lat - 29.5337)*111.0)**2 + ((lon - (-98.4698))*96.0)**2), 1)
+    score = 90.0
+    notes = []
+    if rail_dist < 200.0:
+        score -= 35.0
+        notes.append("Close Railway (<200m)")
+    elif rail_dist < 400.0:
+        score -= 15.0
+        notes.append("Moderate Railway Buffer")
+    if sat_dist_km < 4.0:
+        score -= 25.0
+        notes.append("Airport Flight Corridor")
+    if not notes:
+        notes.append("Quiet Noise Buffer")
+    return {
+        "noise_buffer_score": float(np.clip(score, 10.0, 100.0)),
+        "railway_dist_m": round(rail_dist),
+        "sat_airport_dist_km": sat_dist_km,
+        "noise_buffer_notes": ", ".join(notes)
+    }
+
+def score_modern_interior(row, ctx):
+    """Text-based modern interior baseline score (blended with vision_grader)."""
+    txt = str(row.get('description', '')).lower()
+    score = 50.0
+    tags = []
+    if any(k in txt for k in ["granite", "quartz", "marble", "solid surface"]):
+        score += 14.0
+        tags.append("Stone Counters")
+    if any(k in txt for k in ["stainless steel", "stainless appliances"]):
+        score += 14.0
+        tags.append("Stainless Steel")
+    if any(k in txt for k in ["farmhouse sink", "apron sink", "single basin sink", "undermount sink", "workstation sink"]):
+        score += 12.0
+        tags.append("Farmhouse/Single Basin Sink")
+    if any(k in txt for k in ["kitchen island", "center island", "prep island", "island with seating", "breakfast bar"]):
+        score += 12.0
+        tags.append("Kitchen Island")
+    if any(k in txt for k in ["modern", "newly renovated", "renovated", "remodeled", "contemporary"]):
+        score += 8.0
+        tags.append("Renovated")
+    # Penalize split dual sinks and dated tile in kitchen
+    if any(k in txt for k in ["double sink", "divided sink", "50/50 sink", "split sink", "tile countertops", "tile kitchen counters", "ceramic tile kitchen", "tile flooring in kitchen", "12x12 tile"]):
+        score -= 15.0
+        tags.append("Dated Tile / Split Dual Sink")
+    return {
+        "modern_interior_score": float(np.clip(score, 15.0, 95.0)),
+        "interior_tags": ", ".join(tags) if tags else "Standard Baseline"
+    }
 
 ACTIVE_CRITERIA = [
-    criterion_year_built_recency,
-    criterion_required_appliances_gatekeeper,
-    criterion_garage_and_bike_storage,
-    criterion_costco_proximity,
-    criterion_grocery_proximity,
-    criterion_park_trail_proximity,
-    criterion_swri_rush_hour_commute,
-    criterion_pollution_and_highway_buffer,
-    criterion_modern_appliances_and_open_floorplan,
-    criterion_water_softener_and_filtration,
-    criterion_pet_friendly_and_hard_flooring,
-    criterion_advanced_junk_fee_parser,
-    criterion_spatial_noise_buffer
+    score_commute,
+    score_grocery,
+    score_park_trail,
+    score_highway_pollution,
+    score_garage_bike,
+    score_costco,
+    score_recency_age,
+    score_water_softener,
+    score_pet_flooring,
+    score_effective_rent,
+    score_noise_buffer,
+    score_modern_interior
 ]
